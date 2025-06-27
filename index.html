@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lista Supermercado</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #fffaf2;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #d35400;
+      margin-bottom: 20px;
+    }
+
+    form {
+      background: #fefefe;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 0 auto 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    input, select, button {
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      cursor: pointer;
+      grid-column: 1 / -1; 
+      justify-self: center; 
+      padding: 10px 20px;
+    }
+
+    button:hover {
+      background-color: #27ae60;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    li {
+      background: #ffffff;
+      margin-bottom: 15px;
+      padding: 18px;
+      border-left: 8px solid #f1c40f;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      transition: 0.3s;
+    }
+
+      li:hover {
+      background-color: #fef9e7;
+    }
+
+    .remove-btn {
+      background: #e74c3c;
+      border: none;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .remove-btn:hover {
+      background: #c0392b;
+    }
+
+    #total {
+      text-align: center;
+      font-size: 18px;
+      margin-top: 20px;
+      color: #2980b9;
+    }
+
+    .produto-detalhes {
+      max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🛒 Lista de Compras</h1>
+
+  <form id="formulario">
+    <input type="text" id="produto" placeholder="Produto (ex: Maçã)" required />
+    <input type="number" id="preco" placeholder="Preço unitário (R$)" step="0.01" required />
+    <input type="number" id="quantidade" placeholder="Quantidade" step="0.01" min="0.01" required />
+
+    <select id="medida">
+      <option value="kg">kg</option>
+      <option value="unidade">unidade</option>
+      <option value="litro">litro</option>
+      <option value="pacote">pacote</option>
+      <option value="dúzia">dúzia</option>
+    </select>
+
+    <select id="categoria">
+      <option value="Hortifruti">🥦 Hortifruti</option>
+      <option value="Laticínios">🧀 Laticínios</option>
+      <option value="Padaria">🍞 Padaria</option>
+      <option value="Limpeza">🧼 Limpeza</option>
+      <option value="Outros">📦 Outros</option>
+    </select>
+
+    <button type="submit">+ Adicionar Produto</button>
+  </form>
+
+  <ul id="lista-produtos"></ul>
+  <div id="total">Total: R$ 0,00</div>
+
+  <script>
+    const form = document.getElementById('formulario');
+    const lista = document.getElementById('lista-produtos');
+    const totalDiv = document.getElementById('total');
+    const inputProduto = document.getElementById('produto');
+    const inputPreco = document.getElementById('preco');
+    const inputQuantidade = document.getElementById('quantidade');
+    const selectMedida = document.getElementById('medida');
+    const selectCategoria = document.getElementById('categoria');
+
+
+    // Desativa o campo quantidade se for "dúzia"
+    selectMedida.addEventListener('change', () => {
+      if (selectMedida.value === 'dúzia') {
+        inputQuantidade.value = 1;
+        inputQuantidade.disabled = true;
+      } else {
+        inputQuantidade.disabled = false;
+        inputQuantidade.value = '';
+      }
+    });
+
+    function obterProdutos() {
+      const produtos = localStorage.getItem('carrinho-detalhado');
+      return produtos ? JSON.parse(produtos) : [];
+    }
+
+    function salvarProdutos(produtos) {
+      localStorage.setItem('carrinho-detalhado', JSON.stringify(produtos));
+    }
+
+    function calcularTotal(produtos) {
+      const total = produtos.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+      totalDiv.textContent = `Total: R$ ${total.toFixed(2)}`;
+    }
+
+    function renderizarProdutos() {
+      const produtos = obterProdutos();
+      lista.innerHTML = '';
+
+      produtos.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div class="produto-detalhes">
+            <strong>${item.nome}</strong> - ${item.quantidade} ${item.medida} (${item.categoria})<br />
+            Valor unitário: R$ ${item.preco.toFixed(2)}<br />
+            <strong>Total: R$ ${(item.preco * item.quantidade).toFixed(2)}</strong>
+          </div>
+          <button class="remove-btn" data-index="${index}">Remover</button>
+        `;
+        lista.appendChild(li);
+      });
+
+      calcularTotal(produtos);
+    }
+
+    form.addEventListener('submit', function(evento) {
+      evento.preventDefault();
+
+      const nome = inputProduto.value.trim();
+      const preco = parseFloat(inputPreco.value);
+      const medida = selectMedida.value;
+      const categoria = selectCategoria.value;
+      const quantidade = medida === 'dúzia' ? 1 : parseFloat(inputQuantidade.value);
+
+      if (!nome || isNaN(preco) || isNaN(quantidade)) return;
+
+      const produtos = obterProdutos();
+      produtos.push({ nome, preco, quantidade, medida, categoria });
+      salvarProdutos(produtos);
+      renderizarProdutos();
+
+      form.reset();
+      inputQuantidade.disabled = false; // garante que o campo volta a ser editável
+    });
+
+    lista.addEventListener('click', function(evento) {
+      if (evento.target.classList.contains('remove-btn')) {
+        const index = evento.target.dataset.index;
+        const produtos = obterProdutos();
+        produtos.splice(index, 1);
+        salvarProdutos(produtos);
+        renderizarProdutos();
+      }
+    });
+
+    renderizarProdutos();
+  </script>
+</body>
+</html>
