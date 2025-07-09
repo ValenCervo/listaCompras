@@ -15,7 +15,14 @@
     h1 {
       text-align: center;
       color: #d35400;
+      margin-bottom: 10px;
+    }
+
+    #contador-cliques {
+      text-align: center;
       margin-bottom: 20px;
+      font-size: 16px;
+      color: #7f8c8d;
     }
 
     form {
@@ -57,6 +64,7 @@
       max-width: 800px;
       margin: 0 auto;
     }
+
     li {
       background: #ffffff;
       margin-bottom: 15px;
@@ -102,11 +110,12 @@
 <body>
 
   <h1>🛒 Lista de Compras</h1>
+  <div id="contador-cliques">Produtos adicionados: 0</div>
 
   <form id="formulario">
     <input type="text" id="produto" placeholder="Produto (ex: Maçã)" required />
     <input type="number" id="preco" placeholder="Preço unitário (R$)" step="0.01" required />
-    <input type="number" id="quantidade" placeholder="Quantidade" step="0.01" min="0.01" required />
+    <input type="number" id="quantidade" placeholder="Quantidade (ex: 1.5 litros)" step="0.01" min="0.01" required />
 
     <select id="medida">
       <option value="kg">kg</option>
@@ -140,8 +149,22 @@
     const inputQuantidade = document.getElementById('quantidade');
     const selectMedida = document.getElementById('medida');
     const selectCategoria = document.getElementById('categoria');
+    const contadorDiv = document.getElementById('contador-cliques');
 
-    // EVENT LISTENER - muda o campo quantidade se for "dúzia"
+    let contadorCliques = 0;
+
+    // Ajusta plural das medidas
+    function formatarMedida(medida, quantidade) {
+      const q = parseFloat(quantidade);
+      if (medida === 'litro') return q === 1 ? 'litro' : 'litros';
+      if (medida === 'unidade') return q === 1 ? 'unidade' : 'unidades';
+      if (medida === 'pacote') return q === 1 ? 'pacote' : 'pacotes';
+      if (medida === 'kg') return 'kg';
+      if (medida === 'dúzia') return 'dúzia';
+      return medida;
+    }
+
+    // Troca campo quantidade se for dúzia
     selectMedida.addEventListener('change', () => {
       if (selectMedida.value === 'dúzia') {
         inputQuantidade.value = 1;
@@ -152,24 +175,20 @@
       }
     });
 
-    // LOCAL STORAGE - busca os produtos salvos no navegador
     function obterProdutos() {
-      const produtos = localStorage.getItem('carrinho-detalhado'); // nome da chave
+      const produtos = localStorage.getItem('carrinho-detalhado');
       return produtos ? JSON.parse(produtos) : [];
     }
 
-    // LOCAL STORAGE - salva os produtos atualizados no navegador
     function salvarProdutos(produtos) {
       localStorage.setItem('carrinho-detalhado', JSON.stringify(produtos));
     }
 
-    // Calcula o total da lista de produtos
     function calcularTotal(produtos) {
       const total = produtos.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
       totalDiv.textContent = `Total: R$ ${total.toFixed(2)}`;
     }
 
-    // Mostra os produtos na tela
     function renderizarProdutos() {
       const produtos = obterProdutos();
       lista.innerHTML = '';
@@ -178,7 +197,7 @@
         const li = document.createElement('li');
         li.innerHTML = `
           <div class="produto-detalhes">
-            <strong>${item.nome}</strong> - ${item.quantidade} ${item.medida} (${item.categoria})<br />
+            <strong>${item.nome}</strong> - ${item.quantidadeExibida} ${formatarMedida(item.medida, item.quantidadeExibida)} (${item.categoria})<br />
             Valor unitário: R$ ${item.preco.toFixed(2)}<br />
             <strong>Total: R$ ${(item.preco * item.quantidade).toFixed(2)}</strong>
           </div>
@@ -190,7 +209,6 @@
       calcularTotal(produtos);
     }
 
-    // EVENT LISTENER - adiciona produto ao enviar o formulário
     form.addEventListener('submit', function(evento) {
       evento.preventDefault();
 
@@ -198,42 +216,42 @@
       const preco = parseFloat(inputPreco.value);
       const medida = selectMedida.value;
       const categoria = selectCategoria.value;
-      const quantidade = medida === 'dúzia' ? 1 : parseFloat(inputQuantidade.value);
 
-      // Validação
-      if (!nome || isNaN(preco) || isNaN(quantidade)) return;
+      const quantidadeReal = medida === 'dúzia' ? 12 : parseFloat(inputQuantidade.value);
+      const quantidadeExibida = medida === 'dúzia' ? '1' : inputQuantidade.value;
 
-      // Adiciona produto ao array
+      if (!nome || isNaN(preco) || isNaN(quantidadeReal)) return;
+
       const produtos = obterProdutos();
-      produtos.push({ nome, preco, quantidade, medida, categoria });
+      produtos.push({
+        nome,
+        preco,
+        quantidade: quantidadeReal,
+        medida,
+        categoria,
+        quantidadeExibida
+      });
 
-      // LOCAL STORAGE - salva o novo produto
       salvarProdutos(produtos);
-
-      // Atualiza a interface
       renderizarProdutos();
 
-      // Limpa o formulário
+      contadorCliques++;
+      contadorDiv.textContent = `Produtos adicionados: ${contadorCliques}`;
+
       form.reset();
       inputQuantidade.disabled = false;
     });
 
-    // EVENT LISTENER - remove produto ao clicar no botão "Remover"
     lista.addEventListener('click', function(evento) {
       if (evento.target.classList.contains('remove-btn')) {
         const index = evento.target.dataset.index;
         const produtos = obterProdutos();
-        produtos.splice(index, 1); // remove 1 item no índice clicado
-
-        // LOCAL STORAGE - salva a nova lista sem o item
+        produtos.splice(index, 1);
         salvarProdutos(produtos);
-
-        // Atualiza visualmente
         renderizarProdutos();
       }
     });
 
-    // Inicializa a lista quando a página carrega
     renderizarProdutos();
   </script>
 </body>
